@@ -5,8 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>Heroes Lore: iPhone XR Optimized Multitouch</title>
+    <title>Heroes Lore: Perfect Mobile Viewport</title>
     <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+        }
         html, body {
             margin: 0;
             padding: 0;
@@ -20,32 +26,38 @@
             font-family: monospace;
             overflow: hidden;
             position: fixed;
-            user-select: none;
-            -webkit-user-select: none;
-            -webkit-touch-callout: none;
             touch-action: none;
         }
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #000;
+        }
         canvas {
+            display: block;
             background-color: #1a1c23;
-            box-shadow: 0 0 25px rgba(0,0,0,0.9);
             touch-action: none;
         }
         #menu-screen {
             position: absolute;
             top: 0;
             left: 0;
-            width: 100vw;
-            height: 100vh;
-            background: rgba(11, 11, 16, 0.95);
+            width: 100%;
+            height: 100%;
+            background: rgba(11, 11, 16, 0.98);
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            z-index: 10;
+            z-index: 100;
         }
         #play-btn {
-            padding: 15px 40px;
-            font-size: 22px;
+            padding: 16px 45px;
+            font-size: 20px;
             font-weight: bold;
             font-family: monospace;
             background: #00f5d4;
@@ -67,6 +79,7 @@
             font-size: 12px;
             text-shadow: 1px 1px 2px #000;
             display: none;
+            z-index: 10;
         }
         .bar-container {
             width: 110px;
@@ -92,6 +105,7 @@
             gap: 12px;
             pointer-events: auto;
             touch-action: none;
+            z-index: 10;
         }
         .skill-btn {
             width: 60px;
@@ -106,8 +120,6 @@
             align-items: center;
             cursor: pointer;
             box-shadow: 0 0 10px rgba(0,245,212,0.3);
-            user-select: none;
-            -webkit-user-select: none;
             touch-action: none;
             font-size: 11px;
         }
@@ -118,34 +130,37 @@
 </head>
 <body>
 
-    <div id="menu-screen">
-        <h1 style="color: #00f5d4; margin-bottom: 5px; font-size: 22px;">HEROES LORE</h1>
-        <p style="color: #aaa; margin-bottom: 30px; font-size: 11px;">Otimizado para iPhone XR</p>
-        <button id="play-btn" onclick="startGame()">PLAY</button>
-    </div>
+    <div id="game-container">
+        <!-- Ecrã de Início com centralização absoluta -->
+        <div id="menu-screen">
+            <h1 style="color: #00f5d4; margin-bottom: 5px; font-size: 24px; text-align: center;">HEROES LORE</h1>
+            <p style="color: #aaa; margin-bottom: 30px; font-size: 11px; text-align: center;">Toque em PLAY para Tela Cheia</p>
+            <button id="play-btn" onclick="startGame()">PLAY</button>
+        </div>
 
-    <div id="hud">
-        <div>Nível: <span id="lvl-val">1</span></div>
-        <div>HP: <span id="hp-val">100/100</span></div>
-        <div class="bar-container"><div id="hp-bar" class="bar-fill"></div></div>
-        <div>MP: <span id="mp-val">50/50</span></div>
-        <div class="bar-container"><div id="mp-bar" class="bar-fill"></div></div>
-        <div>coords: <span id="coords">X: 0, Y: 0</span></div>
-    </div>
+        <div id="hud">
+            <div>Nível: <span id="lvl-val">1</span></div>
+            <div>HP: <span id="hp-val">100/100</span></div>
+            <div class="bar-container"><div id="hp-bar" class="bar-fill"></div></div>
+            <div>MP: <span id="mp-val">50/50</span></div>
+            <div class="bar-container"><div id="mp-bar" class="bar-fill"></div></div>
+            <div>coords: <span id="coords">X: 0, Y: 0</span></div>
+        </div>
 
-    <div id="skill-hud">
-        <div class="skill-btn" id="dash-btn" style="border-color: #00f5d4;">DASH</div>
-        <div class="skill-btn" id="heavy-btn" style="border-color: #ff0055;">HEAVY</div>
-        <div class="skill-btn" id="atk-btn" style="border-color: #ffd700; width: 70px; height: 70px; font-size: 14px;">ATK</div>
-    </div>
+        <div id="skill-hud">
+            <div class="skill-btn" id="dash-btn" style="border-color: #00f5d4;">DASH</div>
+            <div class="skill-btn" id="heavy-btn" style="border-color: #ff0055;">HEAVY</div>
+            <div class="skill-btn" id="atk-btn" style="border-color: #ffd700; width: 70px; height: 70px; font-size: 14px;">ATK</div>
+        </div>
 
-<canvas id="gameCanvas"></canvas>
+        <canvas id="gameCanvas"></canvas>
+    </div>
 
 <script>
       const canvas = document.getElementById('gameCanvas');
       const ctx = canvas.getContext('2d');
 
-      // Resolução interna ajustada perfeitamente para proporção de telas verticais modernas (como o iPhone XR: ~414x896)
+      // Resolução interna retrato otimizada
       const CANVAS_WIDTH = 414;
       const CANVAS_HEIGHT = 736;
       canvas.width = CANVAS_WIDTH;
@@ -153,6 +168,24 @@
 
       const TILE_SIZE = 32;
       let gameStarted = false;
+
+      function resizeGame() {
+        const windowWidth = window.innerWidth;
+        const windowHeight = window.innerHeight;
+        const windowRatio = windowWidth / windowHeight;
+        const gameRatio = CANVAS_WIDTH / CANVAS_HEIGHT;
+
+        if (windowRatio < gameRatio) {
+          canvas.style.width = windowWidth + 'px';
+          canvas.style.height = (windowWidth / gameRatio) + 'px';
+        } else {
+          canvas.style.height = windowHeight + 'px';
+          canvas.style.width = (windowHeight * gameRatio) + 'px';
+        }
+      }
+
+      window.addEventListener('resize', resizeGame);
+      resizeGame();
 
       function startGame() {
         const elem = document.documentElement;
@@ -166,6 +199,7 @@
         document.getElementById('hud').style.display = 'block';
         document.getElementById('skill-hud').style.display = 'flex';
         gameStarted = true;
+        resizeGame();
       }
 
       // 1. SPRITESHEET DA MIO
@@ -233,21 +267,6 @@
       }
       playerSprite.src = tempCanvas.toDataURL();
 
-      // Ajuste proporcional exato para a tela do iPhone XR
-      function resizeCanvas() {
-        const windowRatio = window.innerWidth / window.innerHeight;
-        const gameRatio = CANVAS_WIDTH / CANVAS_HEIGHT;
-        if (windowRatio < gameRatio) {
-          canvas.style.width = '100vw';
-          canvas.style.height = (window.innerWidth / gameRatio) + 'px';
-        } else {
-          canvas.style.height = '100vh';
-          canvas.style.width = (window.innerHeight * gameRatio) + 'px';
-        }
-      }
-      window.addEventListener('resize', resizeCanvas);
-      resizeCanvas();
-
       // 2. JOGADOR
       const player = {
         x: 0, y: 0,
@@ -272,7 +291,7 @@
         isHeavyAttacking: false
       };
 
-      // 3. MULTITOQUE REAL COM TOUCH EVENTS (Essencial para Safari / iOS)
+      // 3. MULTITOQUE REAL COM TOUCH EVENTS
       const joystick = {
         active: false,
         identifier: null,
@@ -281,17 +300,12 @@
         angle: 0, force: 0
       };
 
-      // Identifica elementos dos botões de ação na tela
       const atkBtn = document.getElementById('atk-btn');
       const heavyBtn = document.getElementById('heavy-btn');
       const dashBtn = document.getElementById('dash-btn');
 
       function isInsideElement(touch, elem) {
         const rect = elem.getBoundingClientRect();
-        // Converte coordenadas da tela para as coordenadas escaladas do CSS
-        const scaleX = canvas.clientWidth / CANVAS_WIDTH;
-        const scaleY = canvas.clientHeight / CANVAS_HEIGHT;
-        // Validação direta via bounding client rect da DOM
         return (
           touch.clientX >= rect.left &&
           touch.clientX <= rect.right &&
@@ -307,7 +321,6 @@
         for (let i = 0; i < e.changedTouches.length; i++) {
           const t = e.changedTouches[i];
 
-          // Verifica se o toque foi em algum botão de habilidade no lado direito
           if (isInsideElement(t, atkBtn)) {
             input.isLightAttacking = true;
             continue;
@@ -321,7 +334,6 @@
             continue;
           }
 
-          // Se o toque ocorreu na metade esquerda da tela e o joystick está livre, ativa o analógico flutuante
           if (t.clientX < window.innerWidth / 2 && !joystick.active) {
             joystick.active = true;
             joystick.identifier = t.identifier;
@@ -363,26 +375,18 @@
             joystick.identifier = null;
           }
 
-          if (!isInsideElement(t, atkBtn)) {
-            // Verifica se tirou o dedo do botão ATK
-            let stillTouchingAtk = false;
-            for (let j = 0; j < e.touches.length; j++) {
-              if (isInsideElement(e.touches[j], atkBtn)) stillTouchingAtk = true;
-            }
-            if (!stillTouchingAtk) input.isLightAttacking = false;
+          let stillTouchingAtk = false;
+          let stillTouchingHeavy = false;
+          for (let j = 0; j < e.touches.length; j++) {
+            if (isInsideElement(e.touches[j], atkBtn)) stillTouchingAtk = true;
+            if (isInsideElement(e.touches[j], heavyBtn)) stillTouchingHeavy = true;
           }
-
-          if (!isInsideElement(t, heavyBtn)) {
-            let stillTouchingHeavy = false;
-            for (let j = 0; j < e.touches.length; j++) {
-              if (isInsideElement(e.touches[j], heavyBtn)) stillTouchingHeavy = true;
-            }
-            if (!stillTouchingHeavy) input.isHeavyAttacking = false;
-          }
+          if (!stillTouchingAtk) input.isLightAttacking = false;
+          if (!stillTouchingHeavy) input.isHeavyAttacking = false;
         }
       }, { passive: false });
 
-      // Suporte a Teclado (PC Case-by-Case)
+      // Suporte a Teclado (PC)
       window.addEventListener('keydown', (e) => {
         if (!gameStarted) return;
         const k = e.key.toLowerCase();
