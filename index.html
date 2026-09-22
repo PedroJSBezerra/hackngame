@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="pt">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Heroes Lore: Perfect Fluid Multi-Key Movement & Attacks</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        background-color: #0b0b10;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        color: #fff;
+        font-family: monospace;
+        overflow: hidden;
+        user-select: none;
+      }
+      canvas {
+        border: 2px solid #333;
+        background-color: #1a1c23;
+        box-shadow: 0 0 25px rgba(0, 0, 0, 0.9);
+      }
+      #hud {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        pointer-events: none;
+        font-size: 14px;
+        text-shadow: 1px 1px 2px #000;
+      }
+      .bar-container {
+        width: 150px;
+        height: 12px;
+        background: #333;
+        border: 1px solid #555;
+        margin-bottom: 4px;
+        position: relative;
+      }
+      .bar-fill {
+        height: 100%;
+        width: 100%;
+        transition: width 0.1s linear;
+      }
+      #hp-bar {
+        background: #e63946;
+      }
+      #mp-bar {
+        background: #1d3557;
+      }
+      #xp-bar {
+        background: #457b9d;
+      }
+
+      #skill-hud {
+        position: absolute;
+        bottom: 30px;
+        right: 30px;
+        display: flex;
+        gap: 15px;
+        pointer-events: auto;
+      }
+      .skill-btn {
+        width: 65px;
+        height: 65px;
+        background: rgba(30, 30, 45, 0.8);
+        border: 2px solid #457b9d;
+        border-radius: 50%;
+        color: #fff;
+        font-weight: bold;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        cursor: pointer;
+        box-shadow: 0 0 10px rgba(0, 245, 212, 0.3);
+      }
+      .skill-btn:active {
+        background: rgba(0, 245, 212, 0.4);
+      }
+    </style>
+  </head>
+  <body>
+    <div id="hud">
+      <div>Nível: <span id="lvl-val">1</span></div>
+      <div>HP: <span id="hp-val">100/100</span></div>
+      <div class="bar-container"><div id="hp-bar" class="bar-fill"></div></div>
+      <div>MP: <span id="mp-val">50/50</span></div>
+      <div class="bar-container"><div id="mp-bar" class="bar-fill"></div></div>
+      <div>coords: <span id="coords">X: 0, Y: 0</span></div>
+      <div style="margin-top: 10px; font-size: 11px; color: #aaa">
+        J (Ataque Leve Contínuo) | K (Ataque Pesado Contínuo) | L (Dash)<br />
+        Pode segurar teclas de direção e mudar de direção livremente!
+      </div>
+    </div>
+
+    <div id="skill-hud">
+      <div
+        class="skill-btn"
+        onclick="player.dash()"
+        style="border-color: #00f5d4"
+      >
+        DASH
+      </div>
+      <div class="skill-btn" id="heavy-btn" style="border-color: #ff0055">
+        HEAVY
+      </div>
+      <div
+        class="skill-btn"
+        id="atk-btn"
+        style="
+          border-color: #ffd700;
+          width: 80px;
+          height: 80px;
+          font-size: 16px;
+        "
+      >
+        ATK
+      </div>
+    </div>
+
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+
+    <script>
+      const canvas = document.getElementById('gameCanvas');
+      const ctx = canvas.getContext('2d');
+
+      const TILE_SIZE = 32;
+
+      // 1. SPRITESHEET DA MIO
+      const playerSprite = new Image();
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = 128;
+      tempCanvas.height = 128;
+      const tCtx = tempCanvas.getContext('2d');
+
+      function drawMioFrame(col, row, dir, frame) {
+        const ox = col * 32;
+        const oy = row * 32;
+
+        tCtx.fillStyle = 'rgba(0,0,0,0.3)';
+        tCtx.beginPath();
+        tCtx.ellipse(ox + 16, oy + 30, 8, 3, 0, 0, Math.PI * 2);
+        tCtx.fill();
+
+        tCtx.fillStyle = '#fcd2ba';
+        if (frame === 1) {
+          tCtx.fillRect(ox + 11, oy + 26, 3, 4);
+          tCtx.fillRect(ox + 18, oy + 24, 3, 3);
+        } else if (frame === 3) {
+          tCtx.fillRect(ox + 11, oy + 24, 3, 3);
+          tCtx.fillRect(ox + 18, oy + 26, 3, 4);
+        } else {
+          tCtx.fillRect(ox + 12, oy + 25, 3, 4);
+          tCtx.fillRect(ox + 17, oy + 25, 3, 4);
+        }
+
+        tCtx.fillStyle = '#a882c8';
+        tCtx.fillRect(ox + 10, oy + 14, 12, 12);
+        tCtx.fillStyle = '#8b64ab';
+        tCtx.fillRect(ox + 14, oy + 14, 4, 12);
+
+        tCtx.fillStyle = '#fcd2ba';
+        tCtx.fillRect(ox + 11, oy + 8, 10, 8);
+
+        tCtx.fillStyle = '#22ccdd';
+        if (dir === 0) {
+          tCtx.fillRect(ox + 9, oy + 4, 14, 6);
+          tCtx.fillRect(ox + 7, oy + 8, 4, 12);
+          tCtx.fillRect(ox + 21, oy + 8, 4, 12);
+          tCtx.fillStyle = '#1199aa';
+          tCtx.fillRect(ox + 11, oy + 7, 10, 3);
+        } else if (dir === 1) {
+          tCtx.fillRect(ox + 10, oy + 4, 12, 6);
+          tCtx.fillRect(ox + 8, oy + 8, 12, 12);
+          tCtx.fillRect(ox + 17, oy + 8, 5, 8);
+        } else if (dir === 2) {
+          tCtx.fillRect(ox + 8, oy + 4, 16, 18);
+          tCtx.fillStyle = '#1199aa';
+          tCtx.fillRect(ox + 10, oy + 8, 12, 10);
+        } else if (dir === 3) {
+          tCtx.fillRect(ox + 10, oy + 4, 12, 6);
+          tCtx.fillRect(ox + 12, oy + 8, 12, 12);
+          tCtx.fillRect(ox + 10, oy + 8, 5, 8);
+        }
+      }
+
+      for (let d = 0; d < 4; d++) {
+        for (let f = 0; f < 4; f++) {
+          drawMioFrame(f, d, d, f);
+        }
+      }
+      playerSprite.src = tempCanvas.toDataURL();
+
+      // 2. JOGADOR
+      const player = {
+        x: 0,
+        y: 0,
+        width: 32,
+        height: 32,
+        boxOffsetX: 6,
+        boxOffsetY: 16,
+        boxWidth: 20,
+        boxHeight: 14,
+
+        speed: 3.0,
+        direction: 0,
+        frameIndex: 0,
+        frameCount: 4,
+        animSpeed: 10,
+        animCounter: 0,
+        isMoving: false,
+
+        hp: 100,
+        maxHp: 100,
+        mp: 50,
+        maxMp: 50,
+        invincibleTimer: 0,
+
+        isDashing: false,
+        dashTimer: 0,
+        dashMaxTimer: 10,
+        dashSpeed: 10,
+        dashCooldown: 0,
+        dashAngle: 0,
+
+        lightCooldownTimer: 0,
+        heavyCooldownTimer: 0,
+      };
+
+      const camera = { x: 0, y: 0 };
+      let enemies = [];
+      let particles = [];
+      let activeAttacks = [];
+
+      // 3. MAPA DE ESTADO DE INPUTS ROBUSTO
+      const input = {
+        w: false,
+        s: false,
+        a: false,
+        d: false,
+        isLightAttacking: false,
+        isHeavyAttacking: false,
+      };
+
+      window.addEventListener('keydown', (e) => {
+        const k = e.key.toLowerCase();
+        if (k === 'w' || k === 'arrowup') input.w = true;
+        if (k === 's' || k === 'arrowdown') input.s = true;
+        if (k === 'a' || k === 'arrowleft') input.a = true;
+        if (k === 'd' || k === 'arrowright') input.d = true;
+
+        if (k === 'j') input.isLightAttacking = true;
+        if (k === 'k') input.isHeavyAttacking = true;
+
+        if (k === 'l' || k === 'shift') player.dash();
+      });
+
+      window.addEventListener('keyup', (e) => {
+        const k = e.key.toLowerCase();
+        if (k === 'w' || k === 'arrowup') input.w = false;
+        if (k === 's' || k === 'arrowdown') input.s = false;
+        if (k === 'a' || k === 'arrowleft') input.a = false;
+        if (k === 'd' || k === 'arrowright') input.d = false;
+
+        if (k === 'j') input.isLightAttacking = false;
+        if (k === 'k') input.isHeavyAttacking = false;
+      });
+
+      // Suporte táctil / rato sustentado para os botões virtuais da tela
+      const atkBtn = document.getElementById('atk-btn');
+      atkBtn.addEventListener('pointerdown', () => {
+        input.isLightAttacking = true;
+      });
+      window.addEventListener('pointerup', () => {
+        input.isLightAttacking = false;
+      });
+
+      const heavyBtn = document.getElementById('heavy-btn');
+      heavyBtn.addEventListener('pointerdown', () => {
+        input.isHeavyAttacking = true;
+      });
+      window.addEventListener('pointerup', () => {
+        input.isHeavyAttacking = false;
+      });
+
+      // 4. JOYSTICK VIRTUAL
+      const joystick = {
+        active: false,
+        startX: 0,
+        startY: 0,
+        currentX: 0,
+        currentY: 0,
+        angle: 0,
+        force: 0,
+      };
+
+      window.addEventListener('pointerdown', (e) => {
+        if (e.clientX < canvas.width / 2 && e.target === canvas) {
+          joystick.active = true;
+          joystick.startX = e.clientX;
+          joystick.startY = e.clientY;
+          joystick.currentX = e.clientX;
+          joystick.currentY = e.clientY;
+        }
+      });
+
+      window.addEventListener('pointermove', (e) => {
+        if (joystick.active) {
+          joystick.currentX = e.clientX;
+          joystick.currentY = e.clientY;
+          const dx = joystick.currentX - joystick.startX;
+          const dy = joystick.currentY - joystick.startY;
+          joystick.angle = Math.atan2(dy, dx);
+          joystick.force = Math.min(Math.hypot(dx, dy) / 50, 1);
+        }
+      });
+
+      window.addEventListener('pointerup', () => {
+        joystick.active = false;
+        joystick.force = 0;
+      });
+
+      // 5. GERADOR PROCEDURAL
+      function pseudoNoise(tileX, tileY) {
+        let val = Math.sin(tileX * 12.9898 + tileY * 78.233) * 43758.5453;
+        let rnd = val - Math.floor(val);
+        let smooth = Math.sin(tileX * 0.15) * Math.cos(tileY * 0.15);
+        return smooth > 0.55 || (smooth > 0.35 && rnd > 0.8) ? 1 : 0;
+      }
+
+      function spawnEnemiesAround() {
+        if (enemies.length < 10) {
+          const angle = Math.random() * Math.PI * 2;
+          const dist = 250 + Math.random() * 150;
+          const spawnX = player.x + Math.cos(angle) * dist;
+          const spawnY = player.y + Math.sin(angle) * dist;
+          if (
+            pseudoNoise(
+              Math.floor(spawnX / TILE_SIZE),
+              Math.floor(spawnY / TILE_SIZE)
+            ) === 0
+          ) {
+            enemies.push({
+              x: spawnX,
+              y: spawnY,
+              width: 24,
+              height: 20,
+              hp: 40,
+              maxHp: 40,
+              speed: 1.1,
+            });
+          }
+        }
+      }
+
+      function isSolidEntity(newX, newY, boxX, boxY, boxW, boxH) {
+        const left = newX + boxX,
+          right = newX + boxX + boxW - 1;
+        const top = newY + boxY,
+          bottom = newY + boxY + boxH - 1;
+        for (
+          let r = Math.floor(top / TILE_SIZE);
+          r <= Math.floor(bottom / TILE_SIZE);
+          r++
+        ) {
+          for (
+            let c = Math.floor(left / TILE_SIZE);
+            c <= Math.floor(right / TILE_SIZE);
+            c++
+          ) {
+            if (pseudoNoise(c, r) === 1) return true;
+          }
+        }
+        return false;
+      }
+
+      // Funções de Combate
+      player.attackLight = function () {
+        createParticles(this.x + 16, this.y + 16, '#ffd700', 6);
+        activeAttacks.push({
+          x: this.x + 16,
+          y: this.y + 16,
+          radius: 25,
+          life: 8,
+          color: '#ffd700',
+        });
+        enemies.forEach((e) => {
+          if (
+            Math.hypot(e.x + 12 - (this.x + 16), e.y + 10 - (this.y + 16)) < 55
+          )
+            e.hp -= 20;
+        });
+      };
+
+      player.attackHeavy = function () {
+        createParticles(this.x + 16, this.y + 16, '#ff0055', 12);
+        activeAttacks.push({
+          x: this.x + 16,
+          y: this.y + 16,
+          radius: 45,
+          life: 12,
+          color: '#ff0055',
+        });
+        enemies.forEach((e) => {
+          if (
+            Math.hypot(e.x + 12 - (this.x + 16), e.y + 10 - (this.y + 16)) < 75
+          )
+            e.hp -= 40;
+        });
+      };
+
+      player.dash = function () {
+        if (this.dashCooldown === 0) {
+          this.isDashing = true;
+          this.dashTimer = this.dashMaxTimer;
+          this.dashCooldown = 25;
+          this.dashAngle =
+            joystick.force > 0
+              ? joystick.angle
+              : this.direction === 1
+              ? 0
+              : this.direction === 3
+              ? Math.PI
+              : this.direction === 2
+              ? -Math.PI / 2
+              : Math.PI / 2;
+          createParticles(this.x + 16, this.y + 16, '#00f5d4', 8);
+        }
+      };
+
+      function createParticles(x, y, color, count) {
+        for (let i = 0; i < count; i++) {
+          particles.push({
+            x,
+            y,
+            vx: (Math.random() - 0.5) * 6,
+            vy: (Math.random() - 0.5) * 6,
+            life: 12,
+            color,
+          });
+        }
+      }
+
+      function updateHUD() {
+        document.getElementById('hp-bar').style.width =
+          Math.max(0, (player.hp / player.maxHp) * 100) + '%';
+        document.getElementById('hp-val').innerText = `${Math.max(
+          0,
+          Math.round(player.hp)
+        )}/${player.maxHp}`;
+        document.getElementById('coords').innerText = `X: ${Math.round(
+          player.x
+        )}, Y: ${Math.round(player.y)}`;
+      }
+
+      // 6. LOOP DE UPDATE
+      function update() {
+        if (player.hp <= 0) return;
+
+        // Gerenciamento contínuo para o Ataque Leve (J)
+        if (input.isLightAttacking) {
+          if (player.lightCooldownTimer <= 0) {
+            player.attackLight();
+            player.lightCooldownTimer = 12;
+          }
+        }
+        if (player.lightCooldownTimer > 0) player.lightCooldownTimer--;
+
+        // Gerenciamento contínuo para o Ataque Pesado (K)
+        if (input.isHeavyAttacking) {
+          if (player.heavyCooldownTimer <= 0) {
+            player.attackHeavy();
+            player.heavyCooldownTimer = 22; // Cadência um pouco mais lenta para o pesado
+          }
+        }
+        if (player.heavyCooldownTimer > 0) player.heavyCooldownTimer--;
+
+        if (player.isDashing) {
+          player.dashTimer--;
+          let dx = Math.cos(player.dashAngle) * player.dashSpeed;
+          let dy = Math.sin(player.dashAngle) * player.dashSpeed;
+          if (
+            !isSolidEntity(
+              player.x + dx,
+              player.y,
+              player.boxOffsetX,
+              player.boxOffsetY,
+              player.boxWidth,
+              player.boxHeight
+            )
+          )
+            player.x += dx;
+          if (
+            !isSolidEntity(
+              player.x,
+              player.y + dy,
+              player.boxOffsetX,
+              player.boxOffsetY,
+              player.boxWidth,
+              player.boxHeight
+            )
+          )
+            player.y += dy;
+          if (player.dashTimer <= 0) player.isDashing = false;
+        } else {
+          let moveX = 0,
+            moveY = 0;
+          if (input.w) moveY -= 1;
+          if (input.s) moveY += 1;
+          if (input.a) moveX -= 1;
+          if (input.d) moveX += 1;
+
+          if (moveX !== 0 || moveY !== 0) {
+            const angle = Math.atan2(moveY, moveX);
+            let dx = Math.cos(angle) * player.speed;
+            let dy = Math.sin(angle) * player.speed;
+
+            if (
+              !isSolidEntity(
+                player.x + dx,
+                player.y,
+                player.boxOffsetX,
+                player.boxOffsetY,
+                player.boxWidth,
+                player.boxHeight
+              )
+            )
+              player.x += dx;
+            if (
+              !isSolidEntity(
+                player.x,
+                player.y + dy,
+                player.boxOffsetX,
+                player.boxOffsetY,
+                player.boxWidth,
+                player.boxHeight
+              )
+            )
+              player.y += dy;
+
+            player.isMoving = true;
+            const deg = (angle * 180) / Math.PI;
+            if (deg >= -45 && deg <= 45) player.direction = 1;
+            else if (deg > 45 && deg < 135) player.direction = 0;
+            else if (deg >= -135 && deg < -45) player.direction = 2;
+            else player.direction = 3;
+          } else if (joystick.force > 0) {
+            let dx = Math.cos(joystick.angle) * player.speed * joystick.force;
+            let dy = Math.sin(joystick.angle) * player.speed * joystick.force;
+
+            if (
+              !isSolidEntity(
+                player.x + dx,
+                player.y,
+                player.boxOffsetX,
+                player.boxOffsetY,
+                player.boxWidth,
+                player.boxHeight
+              )
+            )
+              player.x += dx;
+            if (
+              !isSolidEntity(
+                player.x,
+                player.y + dy,
+                player.boxOffsetX,
+                player.boxOffsetY,
+                player.boxWidth,
+                player.boxHeight
+              )
+            )
+              player.y += dy;
+
+            player.isMoving = true;
+            const deg = (joystick.angle * 180) / Math.PI;
+            if (deg >= -45 && deg <= 45) player.direction = 1;
+            else if (deg > 45 && deg < 135) player.direction = 0;
+            else if (deg >= -135 && deg < -45) player.direction = 2;
+            else player.direction = 3;
+          } else {
+            player.isMoving = false;
+            player.frameIndex = 0;
+          }
+
+          if (player.isMoving) {
+            player.animCounter++;
+            if (player.animCounter >= player.animSpeed) {
+              player.frameIndex = (player.frameIndex + 1) % player.frameCount;
+              player.animCounter = 0;
+            }
+          }
+        }
+
+        if (player.dashCooldown > 0) player.dashCooldown--;
+        camera.x = player.x - canvas.width / 2 + player.width / 2;
+        camera.y = player.y - canvas.height / 2 + player.height / 2;
+
+        spawnEnemiesAround();
+
+        enemies.forEach((e, index) => {
+          const dist = Math.hypot(
+            player.x + 16 - (e.x + 12),
+            player.y + 16 - (e.y + 10)
+          );
+          if (dist < 300) {
+            const angle = Math.atan2(
+              player.y + 16 - (e.y + 10),
+              player.x + 16 - (e.x + 12)
+            );
+            e.x += Math.cos(angle) * e.speed;
+            e.y += Math.sin(angle) * e.speed;
+            if (dist < 20) player.hp -= 0.4;
+          }
+          if (e.hp <= 0) enemies.splice(index, 1);
+        });
+
+        updateHUD();
+      }
+
+      // 7. RENDERIZAÇÃO
+      function render() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        const startTileX = Math.floor(camera.x / TILE_SIZE) - 1;
+        const endTileX = startTileX + Math.ceil(canvas.width / TILE_SIZE) + 2;
+        const startTileY = Math.floor(camera.y / TILE_SIZE) - 1;
+        const endTileY = startTileY + Math.ceil(canvas.height / TILE_SIZE) + 2;
+
+        for (let r = startTileY; r <= endTileY; r++) {
+          for (let c = startTileX; c <= endTileX; c++) {
+            const type = pseudoNoise(c, r);
+            const sx = Math.round(c * TILE_SIZE - camera.x);
+            const sy = Math.round(r * TILE_SIZE - camera.y);
+            ctx.fillStyle = type === 1 ? '#2c2825' : '#3a6638';
+            ctx.fillRect(sx, sy, TILE_SIZE, TILE_SIZE);
+            ctx.strokeStyle = type === 1 ? '#181513' : '#2a4c28';
+            ctx.strokeRect(sx, sy, TILE_SIZE, TILE_SIZE);
+          }
+        }
+
+        enemies.forEach((e) => {
+          const sx = Math.round(e.x - camera.x);
+          const sy = Math.round(e.y - camera.y);
+          ctx.fillStyle = '#e63946';
+          ctx.fillRect(sx, sy, 24, 20);
+        });
+
+        const psx = Math.round(player.x - camera.x);
+        const psy = Math.round(player.y - camera.y);
+        const srcX = player.frameIndex * player.width;
+        const srcY = player.direction * player.height;
+        ctx.drawImage(
+          playerSprite,
+          srcX,
+          srcY,
+          player.width,
+          player.height,
+          psx,
+          psy,
+          player.width,
+          player.height
+        );
+
+        activeAttacks.forEach((atk, i) => {
+          atk.life--;
+          ctx.beginPath();
+          ctx.arc(
+            atk.x - camera.x,
+            atk.y - camera.y,
+            atk.radius,
+            0,
+            Math.PI * 2
+          );
+          ctx.strokeStyle = atk.color;
+          ctx.lineWidth = 3;
+          ctx.stroke();
+          if (atk.life <= 0) activeAttacks.splice(i, 1);
+        });
+
+        if (joystick.active) {
+          ctx.beginPath();
+          ctx.arc(joystick.startX, joystick.startY, 35, 0, Math.PI * 2);
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+          ctx.fill();
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+          ctx.stroke();
+
+          ctx.beginPath();
+          ctx.arc(joystick.currentX, joystick.currentY, 18, 0, Math.PI * 2);
+          ctx.fillStyle = 'rgba(0, 245, 212, 0.5)';
+          ctx.fill();
+        }
+
+        particles.forEach((p, i) => {
+          p.x += p.vx;
+          p.y += p.vy;
+          p.life--;
+          ctx.fillStyle = p.color;
+          ctx.fillRect(p.x - camera.x, p.y - camera.y, 4, 4);
+          if (p.life <= 0) particles.splice(i, 1);
+        });
+      }
+
+      function gameLoop() {
+        update();
+        render();
+        requestAnimationFrame(gameLoop);
+      }
+
+      updateHUD();
+      requestAnimationFrame(gameLoop);
+    </script>
+  </body>
+</html>
