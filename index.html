@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>Minecraft Mobile 3D - Three.js</title>
+    <title>Minecraft 3D - Terceira Pessoa</title>
     <style>
         * {
             box-sizing: border-box;
@@ -60,24 +60,6 @@
         #play-btn:active {
             background: #3cb371;
         }
-        #crosshair {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 12px;
-            height: 12px;
-            transform: translate(-50%, -50%);
-            pointer-events: none;
-            z-index: 10;
-        }
-        #crosshair::before, #crosshair::after {
-            content: '';
-            position: absolute;
-            background: rgba(255, 255, 255, 0.9);
-        }
-        #crosshair::before { top: 5px; left: 0; width: 12px; height: 2px; }
-        #crosshair::after { top: 0; left: 5px; width: 2px; height: 12px; }
-
         #hud {
             position: absolute;
             top: 15px;
@@ -89,6 +71,26 @@
             z-index: 10;
             pointer-events: none;
         }
+        #selector-hud {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            display: none;
+            gap: 8px;
+            z-index: 10;
+        }
+        .block-opt {
+            width: 40px;
+            height: 40px;
+            border: 2px solid #fff;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        #opt-grass { background: #559933; }
+        #opt-dirt { background: #8b5a2b; }
+        #opt-stone { background: #7f7f7f; }
+        .block-opt.selected { border-color: #55FF55; transform: scale(1.1); }
+
         #controls-hud {
             position: absolute;
             bottom: 30px;
@@ -121,13 +123,18 @@
         }
         .action-buttons {
             display: flex;
-            gap: 15px;
+            flex-direction: column;
+            gap: 12px;
             pointer-events: auto;
             align-items: flex-end;
         }
+        .action-row {
+            display: flex;
+            gap: 12px;
+        }
         .action-btn {
-            width: 65px;
-            height: 65px;
+            width: 60px;
+            height: 60px;
             background: rgba(30, 30, 40, 0.75);
             border: 2px solid rgba(255, 255, 255, 0.4);
             border-radius: 50%;
@@ -142,37 +149,17 @@
         .action-btn:active {
             background: rgba(85, 255, 85, 0.5);
         }
-        #selector-hud {
-            position: absolute;
-            top: 15px;
-            right: 15px;
-            display: none;
-            gap: 8px;
-            z-index: 10;
-        }
-        .block-opt {
-            width: 40px;
-            height: 40px;
-            border: 2px solid #fff;
-            border-radius: 6px;
-            cursor: pointer;
-        }
-        #opt-grass { background: #559933; }
-        #opt-dirt { background: #8b5a2b; }
-        #opt-stone { background: #7f7f7f; }
-        .block-opt.selected { border-color: #55FF55; transform: scale(1.1); }
     </style>
 </head>
 <body>
 
     <div id="menu-screen">
         <h1 style="color: #55FF55; margin-bottom: 5px; font-size: 28px;">MINECRAFT 3D</h1>
-        <p style="color: #aaa; margin-bottom: 30px; font-size: 12px;">Versão Otimizada Mobile (Three.js)</p>
-        <button id="play-btn" onclick="startGame()">ENTRAR NO MUNDO</button>
+        <p style="color: #aaa; margin-bottom: 30px; font-size: 12px;">Modo Terceira Pessoa + Física</p>
+        <button id="play-btn" onclick="startGame()">JOGAR</button>
     </div>
 
-    <div id="crosshair"></div>
-    <div id="hud">Pos: <span id="pos-val">0, 0</span></div>
+    <div id="hud">Pos: <span id="pos-val">0, 0, 0</span></div>
     
     <div id="selector-hud">
         <div class="block-opt selected" id="opt-grass" onclick="selectBlockType(0)"></div>
@@ -185,22 +172,37 @@
             <div class="joystick-knob" id="joystick-knob"></div>
         </div>
         <div class="action-buttons">
-            <div class="action-btn" id="btn-break" onclick="breakBlock()">QUEBRAR</div>
-            <div class="action-btn" id="btn-place" onclick="placeBlock()" style="background: rgba(85,255,85,0.35);">COLOCAR</div>
+            <div class="action-row">
+                <div class="action-btn" id="btn-jump" onclick="jumpPlayer()" style="background: rgba(0,150,255,0.4);">PULAR</div>
+            </div>
+            <div class="action-row">
+                <div class="action-btn" id="btn-break" onclick="breakBlock()">QUEBRAR</div>
+                <div class="action-btn" id="btn-place" onclick="placeBlock()" style="background: rgba(85,255,85,0.35);">COLOCAR</div>
+            </div>
         </div>
     </div>
 
     <div id="canvas-container"></div>
 
-    <!-- Importando Three.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script>
         let scene, camera, renderer;
         let blocks = [];
         let gameStarted = false;
-        let player = { x: 0, y: 4, z: 0, rotX: 0, rotY: 0 };
-        const move = { x: 0, z: 0 };
-        let selectedMaterialType = 0; // 0: Grama, 1: Terra, 2: Pedra
+        let playerMesh, playerBox;
+        
+        let player = {
+            x: 0, y: 10, z: 0,
+            vy: 0, // Velocidade vertical (gravidade)
+            speed: 0.12,
+            rotY: 0,
+            isGrounded: false
+        };
+
+        let cameraAngleX = 0.5; // Inclinação da câmera
+        let cameraAngleY = 0;   // Rotação orbital ao redor do player
+        let move = { x: 0, z: 0 };
+        let selectedMaterialType = 0;
 
         const materials = [
             new THREE.MeshLambertMaterial({ color: 0x559933 }), // Grama
@@ -230,7 +232,7 @@
 
             scene = new THREE.Scene();
             scene.background = new THREE.Color('#7ec0ee');
-            scene.fog = new THREE.FogExp2('#7ec0ee', 0.02);
+            scene.fog = new THREE.FogExp2('#7ec0ee', 0.015);
 
             camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 
@@ -247,9 +249,15 @@
             dirLight.position.set(40, 100, 40);
             scene.add(dirLight);
 
-            // Gerar terreno inicial (Ilha de blocos)
-            for (let x = -10; x <= 10; x += 2) {
-                for (let z = -10; z <= 10; z += 2) {
+            // Criar o Personagem (Boneco estilo Steve simples)
+            const playerGeo = new THREE.BoxGeometry(1.2, 2.4, 0.8);
+            const playerMat = new THREE.MeshLambertMaterial({ color: 0x3366cc });
+            playerMesh = new THREE.Mesh(playerGeo, playerMat);
+            scene.add(playerMesh);
+
+            // Gerar mundo de blocos
+            for (let x = -12; x <= 12; x += 2) {
+                for (let z = -12; z <= 12; z += 2) {
                     createBlockAt(x, -2, z, materials[0]);
                     createBlockAt(x, -4, z, materials[1]);
                 }
@@ -275,7 +283,7 @@
         }
 
         function setupMobileControls() {
-            // Joystick esquerdo (Movimento)
+            // Joystick Esquerdo (Movimento corrigido)
             const joystick = document.getElementById('joystick');
             const knob = document.getElementById('joystick-knob');
             let jId = null, startX = 0, startY = 0;
@@ -304,7 +312,7 @@
 
                         knob.style.transform = `translate(${dx}px, ${dy}px)`;
                         move.x = dx / maxDist;
-                        move.z = dy / maxDist;
+                        move.z = dy / maxDist; // Ajustado para frente/trás correto
                     }
                 }
                 e.preventDefault();
@@ -322,7 +330,7 @@
                 e.preventDefault();
             }, { passive: false });
 
-            // Toque na parte direita para olhar ao redor
+            // Toque na direita para girar a câmera ao redor do personagem
             let lookId = null, lastLookX = 0, lastLookY = 0;
 
             window.addEventListener('touchstart', (e) => {
@@ -343,9 +351,9 @@
                         let dx = t.clientX - lastLookX;
                         let dy = t.clientY - lastLookY;
 
-                        player.rotY -= dx * 0.005;
-                        player.rotX -= dy * 0.005;
-                        player.rotX = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, player.rotX));
+                        cameraAngleY -= dx * 0.005;
+                        cameraAngleX += dy * 0.005;
+                        cameraAngleX = Math.max(0.1, Math.min(1.4, cameraAngleX));
 
                         lastLookX = t.clientX;
                         lastLookY = t.clientY;
@@ -360,56 +368,94 @@
             });
         }
 
-        // Raycaster para interagir com o bloco central da tela
-        function getTargetBlock() {
-            const raycaster = new THREE.Raycaster();
-            const centerVector = new THREE.Vector2(0, 0);
-            raycaster.setFromCamera(centerVector, camera);
-            const intersects = raycaster.intersectObjects(blocks);
-            if (intersects.length > 0) {
-                return intersects[0];
+        function jumpPlayer() {
+            if (player.isGrounded) {
+                player.vy = 0.25;
+                player.isGrounded = false;
             }
-            return null;
+        }
+
+        // Colisão AABB simples com os blocos do mundo
+        function checkCollision(nx, ny, nz) {
+            const pBox = new THREE.Box3().setFromCenterAndSize(new THREE.Vector3(nx, ny, nz), new THREE.Vector3(1.0, 2.2, 0.6));
+            for (let block of blocks) {
+                const bBox = new THREE.Box3().setFromObject(block);
+                if (pBox.intersectsBox(bBox)) return true;
+            }
+            return false;
         }
 
         function breakBlock() {
-            const hit = getTargetBlock();
-            if (hit && hit.distance < 12) {
-                scene.remove(hit.object);
-                blocks = blocks.filter(b => b !== hit.object);
+            // Remove o bloco mais próximo à frente do player
+            if (blocks.length > 0) {
+                let targetIdx = 0;
+                let minDist = 999;
+                blocks.forEach((b, idx) => {
+                    let d = b.position.distanceTo(playerMesh.position);
+                    if (d < minDist && d < 6) {
+                        minDist = d;
+                        targetIdx = idx;
+                    }
+                });
+                if (minDist < 6) {
+                    scene.remove(blocks[targetIdx]);
+                    blocks.splice(targetIdx, 1);
+                }
             }
         }
 
         function placeBlock() {
-            const hit = getTargetBlock();
-            if (hit && hit.distance < 12) {
-                const normal = hit.face.normal;
-                const pos = hit.object.position.clone().add(normal.clone().multiplyScalar(2));
-                
-                // Evitar colocar bloco em cima do jogador
-                if (Math.abs(pos.x - player.x) > 1 || Math.abs(pos.z - player.z) > 1 || pos.y > player.y) {
-                    createBlockAt(pos.x, pos.y, pos.z, materials[selectedMaterialType]);
-                }
-            }
+            const pos = playerMesh.position.clone().add(new THREE.Vector3(0, -1, 0).applyAxisAngle(new THREE.Vector3(0,1,0), player.rotY));
+            const snapX = Math.round(pos.x / 2) * 2;
+            const snapY = Math.round(pos.y / 2) * 2;
+            const snapZ = Math.round(pos.z / 2) * 2;
+            createBlockAt(snapX, snapY + 2, snapZ, materials[selectedMaterialType]);
         }
 
         function animate() {
             requestAnimationFrame(animate);
 
             if (gameStarted) {
-                const speed = 0.07;
-                let forward = -move.z;
-                let side = move.x;
+                // 1. Movimento relativo à direção para onde a câmera aponta
+                if (move.x !== 0 || move.z !== 0) {
+                    let moveAngle = Math.atan2(move.x, move.z) + cameraAngleY;
+                    player.rotY = moveAngle;
 
-                player.x += (Math.sin(player.rotY) * forward + Math.cos(player.rotY) * side) * speed * 12;
-                player.z += (Math.cos(player.rotY) * forward - Math.sin(player.rotY) * side) * speed * 12;
+                    let dx = Math.sin(moveAngle) * player.speed * 12;
+                    let dz = Math.cos(moveAngle) * player.speed * 12;
 
-                camera.position.set(player.x, player.y, player.z);
+                    // Teste de colisão horizontal eixo X e Z
+                    if (!checkCollision(player.x + dx, player.y, player.z)) player.x += dx;
+                    if (!checkCollision(player.x, player.y, player.z + dz)) player.z += dz;
+                }
 
-                const euler = new THREE.Euler(player.rotX, player.rotY, 0, 'YXZ');
-                camera.quaternion.setFromEuler(euler);
+                // 2. Física e Gravidade
+                player.vy -= 0.015; // Gravidade
+                player.y += player.vy;
 
-                document.getElementById('pos-val').innerText = `${Math.round(player.x)}, ${Math.round(player.z)}`;
+                // Colisão vertical (chão/teto)
+                if (checkCollision(player.x, player.y, player.z)) {
+                    player.y -= player.vy;
+                    if (player.vy < 0) player.isGrounded = true;
+                    player.vy = 0;
+                } else {
+                    player.isGrounded = false;
+                }
+
+                // Atualizar posição do mesh do player
+                playerMesh.position.set(player.x, player.y, player.z);
+                playerMesh.rotation.y = player.rotY;
+
+                // 3. Câmera em Terceira Pessoa Orbitando o Player
+                let distCam = 7;
+                let cx = player.x - Math.sin(cameraAngleY) * Math.cos(cameraAngleX) * distCam;
+                let cy = player.y + Math.sin(cameraAngleX) * distCam + 1;
+                let cz = player.z - Math.cos(cameraAngleY) * Math.cos(cameraAngleX) * distCam;
+
+                camera.position.set(cx, cy, cz);
+                camera.lookAt(player.x, player.y + 0.5, player.z);
+
+                document.getElementById('pos-val').innerText = `${Math.round(player.x)}, ${Math.round(player.y)}, ${Math.round(player.z)}`;
             }
 
             renderer.render(scene, camera);
