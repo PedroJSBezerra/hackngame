@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>Heroes Lore: iPhone XR Fixed Layout</title>
+    <title>Minecraft Mobile 3D - Three.js</title>
     <style>
         * {
             box-sizing: border-box;
@@ -16,31 +16,20 @@
         html, body {
             margin: 0;
             padding: 0;
-            background-color: #0b0b10;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
             width: 100vw;
-            color: #fff;
-            font-family: monospace;
+            height: 100vh;
             overflow: hidden;
-            position: fixed;
+            background-color: #7ec0ee;
+            font-family: monospace;
             touch-action: none;
+            position: fixed;
         }
-        #game-container {
-            position: relative;
+        #canvas-container {
             width: 100vw;
             height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            background: #000;
-        }
-        canvas {
-            display: block;
-            background-color: #1a1c23;
-            touch-action: none;
+            position: absolute;
+            top: 0;
+            left: 0;
         }
         #menu-screen {
             position: absolute;
@@ -48,587 +37,383 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(11, 11, 16, 0.98);
+            background: rgba(15, 15, 20, 0.95);
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
             z-index: 100;
-            padding: 20px;
+            color: #fff;
         }
         #play-btn {
-            padding: 16px 45px;
-            font-size: 20px;
+            padding: 16px 50px;
+            font-size: 22px;
             font-weight: bold;
             font-family: monospace;
-            background: #00f5d4;
-            color: #0b0b10;
+            background: #55FF55;
+            color: #111;
             border: none;
-            border-radius: 30px;
+            border-radius: 10px;
             cursor: pointer;
-            box-shadow: 0 0 20px rgba(0,245,212,0.6);
-            touch-action: none;
+            box-shadow: 0 4px 15px rgba(85,255,85,0.4);
         }
         #play-btn:active {
-            background: #00bfa5;
+            background: #3cb371;
         }
+        #crosshair {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 12px;
+            height: 12px;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            z-index: 10;
+        }
+        #crosshair::before, #crosshair::after {
+            content: '';
+            position: absolute;
+            background: rgba(255, 255, 255, 0.9);
+        }
+        #crosshair::before { top: 5px; left: 0; width: 12px; height: 2px; }
+        #crosshair::after { top: 0; left: 5px; width: 2px; height: 12px; }
+
         #hud {
             position: absolute;
             top: 15px;
             left: 15px;
-            pointer-events: none;
-            font-size: 12px;
+            color: white;
+            font-size: 14px;
             text-shadow: 1px 1px 2px #000;
             display: none;
             z-index: 10;
+            pointer-events: none;
         }
-        .bar-container {
-            width: 110px;
-            height: 9px;
-            background: #333;
-            border: 1px solid #555;
-            margin-bottom: 3px;
-            position: relative;
-        }
-        .bar-fill {
-            height: 100%;
-            width: 100%;
-            transition: width 0.1s linear;
-        }
-        #hp-bar { background: #e63946; }
-        #mp-bar { background: #1d3557; }
-
-        #skill-hud {
+        #controls-hud {
             position: absolute;
-            bottom: 35px;
-            right: 20px;
-            display: none;
-            gap: 12px;
-            pointer-events: auto;
-            touch-action: none;
+            bottom: 30px;
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            padding: 0 25px;
             z-index: 10;
+            pointer-events: none;
+            display: none;
         }
-        .skill-btn {
-            width: 60px;
-            height: 60px;
-            background: rgba(30, 30, 45, 0.8);
-            border: 2px solid #457b9d;
+        .joystick-base {
+            width: 120px;
+            height: 120px;
+            background: rgba(255, 255, 255, 0.15);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            position: relative;
+            pointer-events: auto;
+        }
+        .joystick-knob {
+            width: 50px;
+            height: 50px;
+            background: rgba(255, 255, 255, 0.6);
+            border-radius: 50%;
+            position: absolute;
+            top: 35px;
+            left: 35px;
+            pointer-events: none;
+        }
+        .action-buttons {
+            display: flex;
+            gap: 15px;
+            pointer-events: auto;
+            align-items: flex-end;
+        }
+        .action-btn {
+            width: 65px;
+            height: 65px;
+            background: rgba(30, 30, 40, 0.75);
+            border: 2px solid rgba(255, 255, 255, 0.4);
             border-radius: 50%;
             color: #fff;
             font-weight: bold;
             display: flex;
             justify-content: center;
             align-items: center;
-            cursor: pointer;
-            box-shadow: 0 0 10px rgba(0,245,212,0.3);
-            touch-action: none;
             font-size: 11px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
         }
-        .skill-btn:active {
-            background: rgba(0,245,212,0.4);
+        .action-btn:active {
+            background: rgba(85, 255, 85, 0.5);
         }
+        #selector-hud {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            display: none;
+            gap: 8px;
+            z-index: 10;
+        }
+        .block-opt {
+            width: 40px;
+            height: 40px;
+            border: 2px solid #fff;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        #opt-grass { background: #559933; }
+        #opt-dirt { background: #8b5a2b; }
+        #opt-stone { background: #7f7f7f; }
+        .block-opt.selected { border-color: #55FF55; transform: scale(1.1); }
     </style>
 </head>
 <body>
 
-    <div id="game-container">
-        <div id="menu-screen">
-            <h1 style="color: #00f5d4; margin-bottom: 5px; font-size: 24px; text-align: center;">HEROES LORE</h1>
-            <p style="color: #aaa; margin-bottom: 25px; font-size: 11px; text-align: center; line-height: 1.4;">
-                Toque em PLAY para iniciar.<br>
-                <span style="font-size: 9px; color: #666;">Dica: Adicione à Tela de Início do Safari para jogar sem barras.</span>
-            </p>
-            <button id="play-btn" onclick="startGame()">PLAY</button>
-        </div>
-
-        <div id="hud">
-            <div>Nível: <span id="lvl-val">1</span></div>
-            <div>HP: <span id="hp-val">100/100</span></div>
-            <div class="bar-container"><div id="hp-bar" class="bar-fill"></div></div>
-            <div>MP: <span id="mp-val">50/50</span></div>
-            <div class="bar-container"><div id="mp-bar" class="bar-fill"></div></div>
-            <div>coords: <span id="coords">X: 0, Y: 0</span></div>
-        </div>
-
-        <div id="skill-hud">
-            <div class="skill-btn" id="dash-btn" style="border-color: #00f5d4;">DASH</div>
-            <div class="skill-btn" id="heavy-btn" style="border-color: #ff0055;">HEAVY</div>
-            <div class="skill-btn" id="atk-btn" style="border-color: #ffd700; width: 70px; height: 70px; font-size: 14px;">ATK</div>
-        </div>
-
-        <canvas id="gameCanvas"></canvas>
+    <div id="menu-screen">
+        <h1 style="color: #55FF55; margin-bottom: 5px; font-size: 28px;">MINECRAFT 3D</h1>
+        <p style="color: #aaa; margin-bottom: 30px; font-size: 12px;">Versão Otimizada Mobile (Three.js)</p>
+        <button id="play-btn" onclick="startGame()">ENTRAR NO MUNDO</button>
     </div>
 
-<script>
-      const canvas = document.getElementById('gameCanvas');
-      const ctx = canvas.getContext('2d');
+    <div id="crosshair"></div>
+    <div id="hud">Pos: <span id="pos-val">0, 0</span></div>
+    
+    <div id="selector-hud">
+        <div class="block-opt selected" id="opt-grass" onclick="selectBlockType(0)"></div>
+        <div class="block-opt" id="opt-dirt" onclick="selectBlockType(1)"></div>
+        <div class="block-opt" id="opt-stone" onclick="selectBlockType(2)"></div>
+    </div>
 
-      // Resolução interna compacta adaptada para telas verticais de iPhone
-      const CANVAS_WIDTH = 390;
-      const CANVAS_HEIGHT = 700;
-      canvas.width = CANVAS_WIDTH;
-      canvas.height = CANVAS_HEIGHT;
+    <div id="controls-hud">
+        <div class="joystick-base" id="joystick">
+            <div class="joystick-knob" id="joystick-knob"></div>
+        </div>
+        <div class="action-buttons">
+            <div class="action-btn" id="btn-break" onclick="breakBlock()">QUEBRAR</div>
+            <div class="action-btn" id="btn-place" onclick="placeBlock()" style="background: rgba(85,255,85,0.35);">COLOCAR</div>
+        </div>
+    </div>
 
-      const TILE_SIZE = 32;
-      let gameStarted = false;
+    <div id="canvas-container"></div>
 
-      function resizeGame() {
-        const windowWidth = window.innerWidth;
-        const windowHeight = window.innerHeight;
-        const windowRatio = windowWidth / windowHeight;
-        const gameRatio = CANVAS_WIDTH / CANVAS_HEIGHT;
+    <!-- Importando Three.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        let scene, camera, renderer;
+        let blocks = [];
+        let gameStarted = false;
+        let player = { x: 0, y: 4, z: 0, rotX: 0, rotY: 0 };
+        const move = { x: 0, z: 0 };
+        let selectedMaterialType = 0; // 0: Grama, 1: Terra, 2: Pedra
 
-        if (windowRatio < gameRatio) {
-          canvas.style.width = windowWidth + 'px';
-          canvas.style.height = (windowWidth / gameRatio) + 'px';
-        } else {
-          canvas.style.height = windowHeight + 'px';
-          canvas.style.width = (windowHeight * gameRatio) + 'px';
-        }
-      }
+        const materials = [
+            new THREE.MeshLambertMaterial({ color: 0x559933 }), // Grama
+            new THREE.MeshLambertMaterial({ color: 0x8b5a2b }), // Terra
+            new THREE.MeshLambertMaterial({ color: 0x7f7f7f })  // Pedra
+        ];
 
-      window.addEventListener('resize', resizeGame);
-      resizeGame();
-
-      function startGame() {
-        // Tenta ativar o fullscreen em navegadores compatíveis (Android/Chrome)
-        const elem = document.documentElement;
-        if (elem.requestFullscreen) {
-          elem.requestFullscreen().catch(() => {});
-        } else if (elem.webkitRequestFullscreen) {
-          elem.webkitRequestFullscreen();
-        }
-
-        // Esconde o menu e exibe a interface do jogo
-        document.getElementById('menu-screen').style.display = 'none';
-        document.getElementById('hud').style.display = 'block';
-        document.getElementById('skill-hud').style.display = 'flex';
-        gameStarted = true;
-        resizeGame();
-      }
-
-      // 1. SPRITESHEET DA MIO
-      const playerSprite = new Image();
-      const tempCanvas = document.createElement('canvas');
-      tempCanvas.width = 128;
-      tempCanvas.height = 128;
-      const tCtx = tempCanvas.getContext('2d');
-
-      function drawMioFrame(col, row, dir, frame) {
-        const ox = col * 32;
-        const oy = row * 32;
-
-        tCtx.fillStyle = 'rgba(0,0,0,0.3)';
-        tCtx.beginPath();
-        tCtx.ellipse(ox + 16, oy + 30, 8, 3, 0, 0, Math.PI * 2);
-        tCtx.fill();
-
-        tCtx.fillStyle = '#fcd2ba';
-        if (frame === 1) {
-          tCtx.fillRect(ox + 11, oy + 26, 3, 4);
-          tCtx.fillRect(ox + 18, oy + 24, 3, 3);
-        } else if (frame === 3) {
-          tCtx.fillRect(ox + 11, oy + 24, 3, 3);
-          tCtx.fillRect(ox + 18, oy + 26, 3, 4);
-        } else {
-          tCtx.fillRect(ox + 12, oy + 25, 3, 4);
-          tCtx.fillRect(ox + 17, oy + 25, 3, 4);
+        function startGame() {
+            document.getElementById('menu-screen').style.display = 'none';
+            document.getElementById('hud').style.display = 'block';
+            document.getElementById('controls-hud').style.display = 'flex';
+            document.getElementById('selector-hud').style.display = 'flex';
+            gameStarted = true;
+            init3D();
         }
 
-        tCtx.fillStyle = '#a882c8';
-        tCtx.fillRect(ox + 10, oy + 14, 12, 12);
-        tCtx.fillStyle = '#8b64ab';
-        tCtx.fillRect(ox + 14, oy + 14, 4, 12);
-
-        tCtx.fillStyle = '#fcd2ba';
-        tCtx.fillRect(ox + 11, oy + 8, 10, 8);
-
-        tCtx.fillStyle = '#22ccdd';
-        if (dir === 0) {
-          tCtx.fillRect(ox + 9, oy + 4, 14, 6);
-          tCtx.fillRect(ox + 7, oy + 8, 4, 12);
-          tCtx.fillRect(ox + 21, oy + 8, 4, 12);
-          tCtx.fillStyle = '#1199aa';
-          tCtx.fillRect(ox + 11, oy + 7, 10, 3);
-        } else if (dir === 1) {
-          tCtx.fillRect(ox + 10, oy + 4, 12, 6);
-          tCtx.fillRect(ox + 8, oy + 8, 12, 12);
-          tCtx.fillRect(ox + 17, oy + 8, 5, 8);
-        } else if (dir === 2) {
-          tCtx.fillRect(ox + 8, oy + 4, 16, 18);
-          tCtx.fillStyle = '#1199aa';
-          tCtx.fillRect(ox + 10, oy + 8, 12, 10);
-        } else if (dir === 3) {
-          tCtx.fillRect(ox + 10, oy + 4, 12, 6);
-          tCtx.fillRect(ox + 12, oy + 8, 12, 12);
-          tCtx.fillRect(ox + 10, oy + 8, 5, 8);
+        function selectBlockType(type) {
+            selectedMaterialType = type;
+            document.querySelectorAll('.block-opt').forEach((el, idx) => {
+                if (idx === type) el.classList.add('selected');
+                else el.classList.remove('selected');
+            });
         }
-      }
 
-      for (let d = 0; d < 4; d++) {
-        for (let f = 0; f < 4; f++) {
-          drawMioFrame(f, d, d, f);
-        }
-      }
-      playerSprite.src = tempCanvas.toDataURL();
+        function init3D() {
+            const container = document.getElementById('canvas-container');
 
-      // 2. JOGADOR
-      const player = {
-        x: 0, y: 0,
-        width: 32, height: 32,
-        boxOffsetX: 6, boxOffsetY: 16, boxWidth: 20, boxHeight: 14,
-        speed: 3.0,
-        direction: 0,
-        frameIndex: 0, frameCount: 4, animSpeed: 10, animCounter: 0, isMoving: false,
-        hp: 100, maxHp: 100, mp: 50, maxMp: 50,
-        isDashing: false, dashTimer: 0, dashMaxTimer: 10, dashSpeed: 10, dashCooldown: 0, dashAngle: 0,
-        lightCooldownTimer: 0, heavyCooldownTimer: 0
-      };
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color('#7ec0ee');
+            scene.fog = new THREE.FogExp2('#7ec0ee', 0.02);
 
-      const camera = { x: 0, y: 0 };
-      let enemies = [];
-      let particles = [];
-      let activeAttacks = [];
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 
-      const input = {
-        w: false, s: false, a: false, d: false,
-        isLightAttacking: false,
-        isHeavyAttacking: false
-      };
+            renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: "high-performance" });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            container.appendChild(renderer.domElement);
 
-      // 3. MULTITOQUE REAL COM TOUCH EVENTS
-      const joystick = {
-        active: false,
-        identifier: null,
-        startX: 0, startY: 0,
-        currentX: 0, currentY: 0,
-        angle: 0, force: 0
-      };
+            // Luzes
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+            scene.add(ambientLight);
 
-      const atkBtn = document.getElementById('atk-btn');
-      const heavyBtn = document.getElementById('heavy-btn');
-      const dashBtn = document.getElementById('dash-btn');
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            dirLight.position.set(40, 100, 40);
+            scene.add(dirLight);
 
-      function isInsideElement(touch, elem) {
-        const rect = elem.getBoundingClientRect();
-        return (
-          touch.clientX >= rect.left &&
-          touch.clientX <= rect.right &&
-          touch.clientY >= rect.top &&
-          touch.clientY <= rect.bottom
-        );
-      }
-
-      window.addEventListener('touchstart', (e) => {
-        if (!gameStarted) return;
-        e.preventDefault();
-
-        for (let i = 0; i < e.changedTouches.length; i++) {
-          const t = e.changedTouches[i];
-
-          if (isInsideElement(t, atkBtn)) {
-            input.isLightAttacking = true;
-            continue;
-          }
-          if (isInsideElement(t, heavyBtn)) {
-            input.isHeavyAttacking = true;
-            continue;
-          }
-          if (isInsideElement(t, dashBtn)) {
-            player.dash();
-            continue;
-          }
-
-          if (t.clientX < window.innerWidth / 2 && !joystick.active) {
-            joystick.active = true;
-            joystick.identifier = t.identifier;
-            joystick.startX = t.clientX;
-            joystick.startY = t.clientY;
-            joystick.currentX = t.clientX;
-            joystick.currentY = t.clientY;
-          }
-        }
-      }, { passive: false });
-
-      window.addEventListener('touchmove', (e) => {
-        if (!gameStarted) return;
-        e.preventDefault();
-
-        for (let i = 0; i < e.changedTouches.length; i++) {
-          const t = e.changedTouches[i];
-          if (joystick.active && t.identifier === joystick.identifier) {
-            joystick.currentX = t.clientX;
-            joystick.currentY = t.clientY;
-            const dx = joystick.currentX - joystick.startX;
-            const dy = joystick.currentY - joystick.startY;
-            joystick.angle = Math.atan2(dy, dx);
-            joystick.force = Math.min(Math.hypot(dx, dy) / 50, 1);
-          }
-        }
-      }, { passive: false });
-
-      window.addEventListener('touchend', (e) => {
-        if (!gameStarted) return;
-        e.preventDefault();
-
-        for (let i = 0; i < e.changedTouches.length; i++) {
-          const t = e.changedTouches[i];
-
-          if (joystick.active && t.identifier === joystick.identifier) {
-            joystick.active = false;
-            joystick.force = 0;
-            joystick.identifier = null;
-          }
-
-          let stillTouchingAtk = false;
-          let stillTouchingHeavy = false;
-          for (let j = 0; j < e.touches.length; j++) {
-            if (isInsideElement(e.touches[j], atkBtn)) stillTouchingAtk = true;
-            if (isInsideElement(e.touches[j], heavyBtn)) stillTouchingHeavy = true;
-          }
-          if (!stillTouchingAtk) input.isLightAttacking = false;
-          if (!stillTouchingHeavy) input.isHeavyAttacking = false;
-        }
-      }, { passive: false });
-
-      // 4. GERADOR PROCEDURAL
-      function pseudoNoise(tileX, tileY) {
-        let val = Math.sin(tileX * 12.9898 + tileY * 78.233) * 43758.5453;
-        let rnd = val - Math.floor(val);
-        let smooth = Math.sin(tileX * 0.15) * Math.cos(tileY * 0.15);
-        return (smooth > 0.55 || (smooth > 0.35 && rnd > 0.8)) ? 1 : 0;
-      }
-
-      function spawnEnemiesAround() {
-        if (enemies.length < 8) {
-          const angle = Math.random() * Math.PI * 2;
-          const dist = 180 + Math.random() * 80;
-          const spawnX = player.x + Math.cos(angle) * dist;
-          const spawnY = player.y + Math.sin(angle) * dist;
-          if (pseudoNoise(Math.floor(spawnX/TILE_SIZE), Math.floor(spawnY/TILE_SIZE)) === 0) {
-            enemies.push({ x: spawnX, y: spawnY, width: 24, height: 20, hp: 40, maxHp: 40, speed: 1.1 });
-          }
-        }
-      }
-
-      function isSolidEntity(newX, newY, boxX, boxY, boxW, boxH) {
-        const left = newX + boxX, right = newX + boxX + boxW - 1;
-        const top = newY + boxY, bottom = newY + boxY + boxH - 1;
-        for (let r = Math.floor(top/TILE_SIZE); r <= Math.floor(bottom/TILE_SIZE); r++) {
-          for (let c = Math.floor(left/TILE_SIZE); c <= Math.floor(right/TILE_SIZE); c++) {
-            if (pseudoNoise(c, r) === 1) return true;
-          }
-        }
-        return false;
-      }
-
-      player.attackLight = function() {
-        createParticles(this.x + 16, this.y + 16, '#ffd700', 6);
-        activeAttacks.push({ x: this.x + 16, y: this.y + 16, radius: 25, life: 8, color: '#ffd700' });
-        enemies.forEach(e => {
-          if (Math.hypot((e.x+12)-(this.x+16), (e.y+10)-(this.y+16)) < 55) e.hp -= 20;
-        });
-      };
-
-      player.attackHeavy = function() {
-        createParticles(this.x + 16, this.y + 16, '#ff0055', 12);
-        activeAttacks.push({ x: this.x + 16, y: this.y + 16, radius: 45, life: 12, color: '#ff0055' });
-        enemies.forEach(e => {
-          if (Math.hypot((e.x+12)-(this.x+16), (e.y+10)-(this.y+16)) < 75) e.hp -= 40;
-        });
-      };
-
-      player.dash = function() {
-        if (this.dashCooldown === 0) {
-          this.isDashing = true;
-          this.dashTimer = this.dashMaxTimer;
-          this.dashCooldown = 25;
-          this.dashAngle = joystick.force > 0 ? joystick.angle : (this.direction === 1 ? 0 : this.direction === 3 ? Math.PI : this.direction === 2 ? -Math.PI/2 : Math.PI/2);
-          createParticles(this.x + 16, this.y + 16, '#00f5d4', 8);
-        }
-      };
-
-      function createParticles(x, y, color, count) {
-        for (let i = 0; i < count; i++) {
-          particles.push({ x, y, vx: (Math.random()-0.5)*6, vy: (Math.random()-0.5)*6, life: 12, color });
-        }
-      }
-
-      function updateHUD() {
-        document.getElementById('hp-bar').style.width = Math.max(0, (player.hp / player.maxHp) * 100) + '%';
-        document.getElementById('hp-val').innerText = `${Math.max(0, Math.round(player.hp))}/${player.maxHp}`;
-        document.getElementById('coords').innerText = `X: ${Math.round(player.x)}, Y: ${Math.round(player.y)}`;
-      }
-
-      // 5. LOOP DE UPDATE
-      function update() {
-        if (!gameStarted || player.hp <= 0) return;
-
-        if (input.isLightAttacking) {
-          if (player.lightCooldownTimer <= 0) {
-            player.attackLight();
-            player.lightCooldownTimer = 12;
-          }
-        }
-        if (player.lightCooldownTimer > 0) player.lightCooldownTimer--;
-
-        if (input.isHeavyAttacking) {
-          if (player.heavyCooldownTimer <= 0) {
-            player.attackHeavy();
-            player.heavyCooldownTimer = 22;
-          }
-        }
-        if (player.heavyCooldownTimer > 0) player.heavyCooldownTimer--;
-
-        if (player.isDashing) {
-          player.dashTimer--;
-          let dx = Math.cos(player.dashAngle) * player.dashSpeed;
-          let dy = Math.sin(player.dashAngle) * player.dashSpeed;
-          if (!isSolidEntity(player.x + dx, player.y, player.boxOffsetX, player.boxOffsetY, player.boxWidth, player.boxHeight)) player.x += dx;
-          if (!isSolidEntity(player.x, player.y + dy, player.boxOffsetX, player.boxOffsetY, player.boxWidth, player.boxHeight)) player.y += dy;
-          if (player.dashTimer <= 0) player.isDashing = false;
-        } else {
-          let moveX = 0, moveY = 0;
-          if (input.w) moveY -= 1;
-          if (input.s) moveY += 1;
-          if (input.a) moveX -= 1;
-          if (input.d) moveX += 1;
-
-          if (moveX !== 0 || moveY !== 0) {
-            const angle = Math.atan2(moveY, moveX);
-            let dx = Math.cos(angle) * player.speed;
-            let dy = Math.sin(angle) * player.speed;
-
-            if (!isSolidEntity(player.x + dx, player.y, player.boxOffsetX, player.boxOffsetY, player.boxWidth, player.boxHeight)) player.x += dx;
-            if (!isSolidEntity(player.x, player.y + dy, player.boxOffsetX, player.boxOffsetY, player.boxWidth, player.boxHeight)) player.y += dy;
-
-            player.isMoving = true;
-            const deg = (angle * 180) / Math.PI;
-            if (deg >= -45 && deg <= 45) player.direction = 1;
-            else if (deg > 45 && deg < 135) player.direction = 0;
-            else if (deg >= -135 && deg < -45) player.direction = 2;
-            else player.direction = 3;
-          } else if (joystick.force > 0) {
-            let dx = Math.cos(joystick.angle) * player.speed * joystick.force;
-            let dy = Math.sin(joystick.angle) * player.speed * joystick.force;
-
-            if (!isSolidEntity(player.x + dx, player.y, player.boxOffsetX, player.boxOffsetY, player.boxWidth, player.boxHeight)) player.x += dx;
-            if (!isSolidEntity(player.x, player.y + dy, player.boxOffsetX, player.boxOffsetY, player.boxWidth, player.boxHeight)) player.y += dy;
-
-            player.isMoving = true;
-            const deg = (joystick.angle * 180) / Math.PI;
-            if (deg >= -45 && deg <= 45) player.direction = 1;
-            else if (deg > 45 && deg < 135) player.direction = 0;
-            else if (deg >= -135 && deg < -45) player.direction = 2;
-            else player.direction = 3;
-          } else {
-            player.isMoving = false;
-            player.frameIndex = 0;
-          }
-
-          if (player.isMoving) {
-            player.animCounter++;
-            if (player.animCounter >= player.animSpeed) {
-              player.frameIndex = (player.frameIndex + 1) % player.frameCount;
-              player.animCounter = 0;
+            // Gerar terreno inicial (Ilha de blocos)
+            for (let x = -10; x <= 10; x += 2) {
+                for (let z = -10; z <= 10; z += 2) {
+                    createBlockAt(x, -2, z, materials[0]);
+                    createBlockAt(x, -4, z, materials[1]);
+                }
             }
-          }
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            setupMobileControls();
+            animate();
         }
 
-        if (player.dashCooldown > 0) player.dashCooldown--;
-        camera.x = player.x - CANVAS_WIDTH / 2 + player.width / 2;
-        camera.y = player.y - CANVAS_HEIGHT / 2 + player.height / 2;
-
-        spawnEnemiesAround();
-
-        enemies.forEach((e, index) => {
-          const dist = Math.hypot((player.x+16)-(e.x+12), (player.y+16)-(e.y+10));
-          if (dist < 220) {
-            const angle = Math.atan2((player.y+16)-(e.y+10), (player.x+16)-(e.x+12));
-            e.x += Math.cos(angle) * e.speed;
-            e.y += Math.sin(angle) * e.speed;
-            if (dist < 20) player.hp -= 0.4;
-          }
-          if (e.hp <= 0) enemies.splice(index, 1);
-        });
-
-        updateHUD();
-      }
-
-      // 6. RENDERIZAÇÃO
-      function render() {
-        ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-
-        const startTileX = Math.floor(camera.x / TILE_SIZE) - 1;
-        const endTileX = startTileX + Math.ceil(CANVAS_WIDTH / TILE_SIZE) + 2;
-        const startTileY = Math.floor(camera.y / TILE_SIZE) - 1;
-        const endTileY = startTileY + Math.ceil(CANVAS_HEIGHT / TILE_SIZE) + 2;
-
-        for (let r = startTileY; r <= endTileY; r++) {
-          for (let c = startTileX; c <= endTileX; c++) {
-            const type = pseudoNoise(c, r);
-            const sx = Math.round(c * TILE_SIZE - camera.x);
-            const sy = Math.round(r * TILE_SIZE - camera.y);
-            ctx.fillStyle = type === 1 ? '#2c2825' : '#3a6638';
-            ctx.fillRect(sx, sy, TILE_SIZE, TILE_SIZE);
-            ctx.strokeStyle = type === 1 ? '#181513' : '#2a4c28';
-            ctx.strokeRect(sx, sy, TILE_SIZE, TILE_SIZE);
-          }
+        function createBlockAt(x, y, z, material) {
+            const boxGeo = new THREE.BoxGeometry(2, 2, 2);
+            const mesh = new THREE.Mesh(boxGeo, material);
+            mesh.position.set(x, y, z);
+            scene.add(mesh);
+            blocks.push(mesh);
+            return mesh;
         }
 
-        enemies.forEach(e => {
-          const sx = Math.round(e.x - camera.x);
-          const sy = Math.round(e.y - camera.y);
-          ctx.fillStyle = '#e63946';
-          ctx.fillRect(sx, sy, 24, 20);
-        });
+        function setupMobileControls() {
+            // Joystick esquerdo (Movimento)
+            const joystick = document.getElementById('joystick');
+            const knob = document.getElementById('joystick-knob');
+            let jId = null, startX = 0, startY = 0;
 
-        const psx = Math.round(player.x - camera.x);
-        const psy = Math.round(player.y - camera.y);
-        const srcX = player.frameIndex * player.width;
-        const srcY = player.direction * player.height;
-        ctx.drawImage(playerSprite, srcX, srcY, player.width, player.height, psx, psy, player.width, player.height);
+            joystick.addEventListener('touchstart', (e) => {
+                const t = e.changedTouches[0];
+                jId = t.identifier;
+                startX = t.clientX;
+                startY = t.clientY;
+                e.preventDefault();
+            }, { passive: false });
 
-        activeAttacks.forEach((atk, i) => {
-          atk.life--;
-          ctx.beginPath();
-          ctx.arc(atk.x - camera.x, atk.y - camera.y, atk.radius, 0, Math.PI * 2);
-          ctx.strokeStyle = atk.color;
-          ctx.lineWidth = 3;
-          ctx.stroke();
-          if (atk.life <= 0) activeAttacks.splice(i, 1);
-        });
+            joystick.addEventListener('touchmove', (e) => {
+                for (let i = 0; i < e.changedTouches.length; i++) {
+                    const t = e.changedTouches[i];
+                    if (t.identifier === jId) {
+                        let dx = t.clientX - startX;
+                        let dy = t.clientY - startY;
+                        let dist = Math.hypot(dx, dy);
+                        let maxDist = 35;
 
-        if (joystick.active) {
-          ctx.beginPath();
-          ctx.arc(joystick.startX, joystick.startY, 35, 0, Math.PI * 2);
-          ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
-          ctx.fill();
-          ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
-          ctx.stroke();
+                        if (dist > maxDist) {
+                            dx = (dx / dist) * maxDist;
+                            dy = (dy / dist) * maxDist;
+                        }
 
-          ctx.beginPath();
-          ctx.arc(joystick.currentX, joystick.currentY, 18, 0, Math.PI * 2);
-          ctx.fillStyle = 'rgba(0, 245, 212, 0.5)';
-          ctx.fill();
+                        knob.style.transform = `translate(${dx}px, ${dy}px)`;
+                        move.x = dx / maxDist;
+                        move.z = dy / maxDist;
+                    }
+                }
+                e.preventDefault();
+            }, { passive: false });
+
+            joystick.addEventListener('touchend', (e) => {
+                for (let i = 0; i < e.changedTouches.length; i++) {
+                    if (e.changedTouches[i].identifier === jId) {
+                        jId = null;
+                        knob.style.transform = `translate(0px, 0px)`;
+                        move.x = 0;
+                        move.z = 0;
+                    }
+                }
+                e.preventDefault();
+            }, { passive: false });
+
+            // Toque na parte direita para olhar ao redor
+            let lookId = null, lastLookX = 0, lastLookY = 0;
+
+            window.addEventListener('touchstart', (e) => {
+                for (let i = 0; i < e.changedTouches.length; i++) {
+                    const t = e.changedTouches[i];
+                    if (t.clientX > window.innerWidth / 2 && lookId === null && !e.target.closest('#selector-hud') && !e.target.closest('.action-btn')) {
+                        lookId = t.identifier;
+                        lastLookX = t.clientX;
+                        lastLookY = t.clientY;
+                    }
+                }
+            });
+
+            window.addEventListener('touchmove', (e) => {
+                for (let i = 0; i < e.changedTouches.length; i++) {
+                    const t = e.changedTouches[i];
+                    if (t.identifier === lookId) {
+                        let dx = t.clientX - lastLookX;
+                        let dy = t.clientY - lastLookY;
+
+                        player.rotY -= dx * 0.005;
+                        player.rotX -= dy * 0.005;
+                        player.rotX = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, player.rotX));
+
+                        lastLookX = t.clientX;
+                        lastLookY = t.clientY;
+                    }
+                }
+            });
+
+            window.addEventListener('touchend', (e) => {
+                for (let i = 0; i < e.changedTouches.length; i++) {
+                    if (e.changedTouches[i].identifier === lookId) lookId = null;
+                }
+            });
         }
 
-        particles.forEach((p, i) => {
-          p.x += p.vx; p.y += p.vy; p.life--;
-          ctx.fillStyle = p.color;
-          ctx.fillRect(p.x - camera.x, p.y - camera.y, 4, 4);
-          if (p.life <= 0) particles.splice(i, 1);
-        });
-      }
+        // Raycaster para interagir com o bloco central da tela
+        function getTargetBlock() {
+            const raycaster = new THREE.Raycaster();
+            const centerVector = new THREE.Vector2(0, 0);
+            raycaster.setFromCamera(centerVector, camera);
+            const intersects = raycaster.intersectObjects(blocks);
+            if (intersects.length > 0) {
+                return intersects[0];
+            }
+            return null;
+        }
 
-      function gameLoop() {
-        update();
-        render();
-        requestAnimationFrame(gameLoop);
-      }
+        function breakBlock() {
+            const hit = getTargetBlock();
+            if (hit && hit.distance < 12) {
+                scene.remove(hit.object);
+                blocks = blocks.filter(b => b !== hit.object);
+            }
+        }
 
-      updateHUD();
-      requestAnimationFrame(gameLoop);
+        function placeBlock() {
+            const hit = getTargetBlock();
+            if (hit && hit.distance < 12) {
+                const normal = hit.face.normal;
+                const pos = hit.object.position.clone().add(normal.clone().multiplyScalar(2));
+                
+                // Evitar colocar bloco em cima do jogador
+                if (Math.abs(pos.x - player.x) > 1 || Math.abs(pos.z - player.z) > 1 || pos.y > player.y) {
+                    createBlockAt(pos.x, pos.y, pos.z, materials[selectedMaterialType]);
+                }
+            }
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if (gameStarted) {
+                const speed = 0.07;
+                let forward = -move.z;
+                let side = move.x;
+
+                player.x += (Math.sin(player.rotY) * forward + Math.cos(player.rotY) * side) * speed * 12;
+                player.z += (Math.cos(player.rotY) * forward - Math.sin(player.rotY) * side) * speed * 12;
+
+                camera.position.set(player.x, player.y, player.z);
+
+                const euler = new THREE.Euler(player.rotX, player.rotY, 0, 'YXZ');
+                camera.quaternion.setFromEuler(euler);
+
+                document.getElementById('pos-val').innerText = `${Math.round(player.x)}, ${Math.round(player.z)}`;
+            }
+
+            renderer.render(scene, camera);
+        }
     </script>
 </body>
 </html>
