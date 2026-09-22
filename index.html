@@ -189,11 +189,11 @@
         let scene, camera, renderer;
         let blocks = [];
         let gameStarted = false;
-        let playerMesh, playerBox;
+        let playerMesh;
         
         let player = {
             x: 0, y: 10, z: 0,
-            vy: 0, // Velocidade vertical (gravidade)
+            vy: 0,
             speed: 0.12,
             rotY: 0,
             isGrounded: false
@@ -241,7 +241,6 @@
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
             container.appendChild(renderer.domElement);
 
-            // Luzes
             const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
             scene.add(ambientLight);
 
@@ -249,13 +248,11 @@
             dirLight.position.set(40, 100, 40);
             scene.add(dirLight);
 
-            // Criar o Personagem (Boneco estilo Steve simples)
             const playerGeo = new THREE.BoxGeometry(1.2, 2.4, 0.8);
             const playerMat = new THREE.MeshLambertMaterial({ color: 0x3366cc });
             playerMesh = new THREE.Mesh(playerGeo, playerMat);
             scene.add(playerMesh);
 
-            // Gerar mundo de blocos
             for (let x = -12; x <= 12; x += 2) {
                 for (let z = -12; z <= 12; z += 2) {
                     createBlockAt(x, -2, z, materials[0]);
@@ -283,7 +280,6 @@
         }
 
         function setupMobileControls() {
-            // Joystick Esquerdo (Movimento corrigido)
             const joystick = document.getElementById('joystick');
             const knob = document.getElementById('joystick-knob');
             let jId = null, startX = 0, startY = 0;
@@ -301,7 +297,7 @@
                     const t = e.changedTouches[i];
                     if (t.identifier === jId) {
                         let dx = t.clientX - startX;
-                        let dy = t.clientY - startY;
+                        let dy = t.clientY - startY; // Invertido para corrigir o puxar para baixo/cima
                         let dist = Math.hypot(dx, dy);
                         let maxDist = 35;
 
@@ -312,7 +308,7 @@
 
                         knob.style.transform = `translate(${dx}px, ${dy}px)`;
                         move.x = dx / maxDist;
-                        move.z = dy / maxDist; // Ajustado para frente/trás correto
+                        move.z = -dy / maxDist; // Invertido: puxar para baixo agora gera movimento para trás
                     }
                 }
                 e.preventDefault();
@@ -330,7 +326,6 @@
                 e.preventDefault();
             }, { passive: false });
 
-            // Toque na direita para girar a câmera ao redor do personagem
             let lookId = null, lastLookX = 0, lastLookY = 0;
 
             window.addEventListener('touchstart', (e) => {
@@ -352,7 +347,7 @@
                         let dy = t.clientY - lastLookY;
 
                         cameraAngleY -= dx * 0.005;
-                        cameraAngleX += dy * 0.005;
+                        cameraAngleX -= dy * 0.005; // Ajustado para que arrastar para cima olhe para cima
                         cameraAngleX = Math.max(0.1, Math.min(1.4, cameraAngleX));
 
                         lastLookX = t.clientX;
@@ -375,7 +370,6 @@
             }
         }
 
-        // Colisão AABB simples com os blocos do mundo
         function checkCollision(nx, ny, nz) {
             const pBox = new THREE.Box3().setFromCenterAndSize(new THREE.Vector3(nx, ny, nz), new THREE.Vector3(1.0, 2.2, 0.6));
             for (let block of blocks) {
@@ -386,7 +380,6 @@
         }
 
         function breakBlock() {
-            // Remove o bloco mais próximo à frente do player
             if (blocks.length > 0) {
                 let targetIdx = 0;
                 let minDist = 999;
@@ -416,7 +409,6 @@
             requestAnimationFrame(animate);
 
             if (gameStarted) {
-                // 1. Movimento relativo à direção para onde a câmera aponta
                 if (move.x !== 0 || move.z !== 0) {
                     let moveAngle = Math.atan2(move.x, move.z) + cameraAngleY;
                     player.rotY = moveAngle;
@@ -424,16 +416,13 @@
                     let dx = Math.sin(moveAngle) * player.speed * 12;
                     let dz = Math.cos(moveAngle) * player.speed * 12;
 
-                    // Teste de colisão horizontal eixo X e Z
                     if (!checkCollision(player.x + dx, player.y, player.z)) player.x += dx;
                     if (!checkCollision(player.x, player.y, player.z + dz)) player.z += dz;
                 }
 
-                // 2. Física e Gravidade
-                player.vy -= 0.015; // Gravidade
+                player.vy -= 0.015;
                 player.y += player.vy;
 
-                // Colisão vertical (chão/teto)
                 if (checkCollision(player.x, player.y, player.z)) {
                     player.y -= player.vy;
                     if (player.vy < 0) player.isGrounded = true;
@@ -442,11 +431,9 @@
                     player.isGrounded = false;
                 }
 
-                // Atualizar posição do mesh do player
                 playerMesh.position.set(player.x, player.y, player.z);
                 playerMesh.rotation.y = player.rotY;
 
-                // 3. Câmera em Terceira Pessoa Orbitando o Player
                 let distCam = 7;
                 let cx = player.x - Math.sin(cameraAngleY) * Math.cos(cameraAngleX) * distCam;
                 let cy = player.y + Math.sin(cameraAngleX) * distCam + 1;
